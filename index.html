@@ -174,7 +174,7 @@ html.cc-mode .sb{margin:0 0 10px}
     }
     h += '</div></details>';
 
-    if (未指派 || ccMode) {
+    {
       h += '<details class="block"' + (未指派 ? ' open' : '') + '><summary><span class="t broadcast">❖ 玩法说明（血月七夜 · 生存局）</span><span class="caret">▸</span></summary><div class="block-body">';
       h += '<div class="sect">你是谁</div><div class="bline">你是十二人之一：四狼、四民、四持物。你的身份在第一夜的血梦里揭晓——揭晓前，你和所有人一样只是个客人。</div>';
       h += '<div class="sect">每一夜</div><div class="bline">在「入夜行动」里安排：狼选猎物；持物人涂门、下麻沸散、镜验、带不带银匕；任何人都可以约人同屋（好感 ≥60 才会被接纳）。点「闭眼入睡」结算——夜里发生的事，明早谁都不记得，只有身体和尸体记得。</div>';
@@ -209,8 +209,8 @@ html.cc-mode .sb{margin:0 0 10px}
     for (var j = 0; j < 死者们.length; j++) h += '<span class="chip dead">' + esc(死者们[j]) + '</span>';
     h += '</div></div></details>';
 
-    // ── 关系网（好感/怀疑可视化·控制中心专属）──
-    if (ccMode && !未指派 && s.人物) {
+    // ── 关系网（好感/怀疑可视化）──
+    if (!未指派 && s.人物) {
       h += '<details class="block"><summary><span class="t mirror">♥ 她们与你的关系</span><span class="caret">▸</span></summary><div class="block-body">';
       for (const n of Object.keys(s.人物)) {
         var g = s.人物[n].好感 || 0, w2 = s.人物[n].怀疑 || 0;
@@ -225,7 +225,7 @@ html.cc-mode .sb{margin:0 0 10px}
       h += '</div></details>';
     }
 
-    if (ccMode && 是夜 && !未指派 && !我死 && !已终局) {
+    if (是夜 && !未指派 && !我死 && !已终局) {
       h += '<details class="block" open><summary><span class="t action">☾ 入夜行动</span><span class="caret">▸</span></summary><div class="block-body">';
       h += 夜行动HTML(s, v, 我, 存活);
       h += '<div class="act-row"><button class="btn primary" id="xy-sleep">闭眼 · 入睡</button></div>';
@@ -233,7 +233,7 @@ html.cc-mode .sb{margin:0 0 10px}
       h += '</div></details>';
     }
 
-    if (ccMode && !是夜 && !未指派 && !我死 && !已终局) {
+    if (!是夜 && !未指派 && !我死 && !已终局) {
       h += '<details class="block" open><summary><span class="t vote">⚖ 白天行动</span><span class="caret">▸</span></summary><div class="block-body">';
       if (四物在身(s) && s.$物品[我 + '在身'] !== '旅人' && v.玩家藏处) h += '<div class="act-row" style="margin:0 0 8px"><button class="btn" id="xy-take">取回藏物（' + esc(v.玩家藏处) + '）</button></div>';
       var 银在身 = s.$物品.银匕在身 === '旅人';
@@ -250,22 +250,17 @@ html.cc-mode .sb{margin:0 0 10px}
       h += '</div></details>';
     }
 
-    if (ccMode && 我 === '铜镜' && v.镜验 && v.镜验['旅人']) {
+    if (我 === '铜镜' && v.镜验 && v.镜验['旅人']) {
       h += '<details class="block"><summary><span class="t mirror">◉ 镜验记录（只属于你）</span><span class="caret">▸</span></summary><div class="block-body"><div class="bline muted">' + esc(v.镜验['旅人']) + '</div></div></details>';
     }
 
-    // ── 你的行动（自由输入·控制中心专属——直接推进，不用回输入框）──
-    if (ccMode && !未指派 && !我死 && !已终局) {
+    // ── 你的行动（自由输入——直接推进，不用回输入框）──
+    if (!未指派 && !我死 && !已终局) {
       h += '<div class="sect" style="margin:10px 0 5px">你的行动</div><div style="display:flex;gap:6px"><input id="xy-act" placeholder="输入你要做的事，如：检查尸体 / 质询庄晚棠 / 回房锁门…" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(154,143,138,.3);border-radius:6px;padding:7px 9px;color:#f2e6e0;font-size:12px"><button class="btn primary" id="xy-actsend">行动</button></div>';
     }
 
     if (W.公开事实) {
-      h += '<details class="block"' + (ccMode ? ' open' : '') + '><summary><span class="t roster">✦ 本局大事记</span><span class="caret">▸</span></summary><div class="block-body"><div class="bline muted">' + esc(W.公开事实).replace(/^(「?\[)([^\]]+\])(」?)/gm, '<b>$1$2$3</b>') + '</div></div></details>';
-    }
-
-    // ── HUD 模式：指向控制中心（双入口兜底）──
-    if (!ccMode && !我死 && !已终局) {
-      h += '<div class="act-row"><button class="btn primary" id="xy-opencc" style="width:100%">☾ 打开控制中心 · 完整操作</button></div>';
+      h += '<details class="block"><summary><span class="t roster">✦ 本局大事记</span><span class="caret">▸</span></summary><div class="block-body"><div class="bline muted">' + esc(W.公开事实).replace(/^(「?\[)([^\]]+\])(」?)/gm, '<b>$1$2$3</b>') + '</div></div></details>';
     }
 
     $(SB).html(h);
@@ -394,8 +389,6 @@ html.cc-mode .sb{margin:0 0 10px}
       推进(t.trim());
     });
     $('#xy-act').off('keydown').on('keydown', function (e) { if (e.key === 'Enter') $('#xy-actsend').click(); });
-    // HUD → 控制中心（同页注入；脚本没注入入口时的兜底通道）
-    $('#xy-opencc').off('click').on('click', function () { emitEvt('血月-开控制中心', {}); });
   }
 
   function 弹窗(标题, 正文) {
