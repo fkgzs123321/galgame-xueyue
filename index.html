@@ -66,12 +66,18 @@ details.block>summary .caret{margin-left:auto;transition:transform .2s}
 @keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
 .err{padding:10px;color:#fca5a5;font-size:12px;line-height:1.6;word-break:break-all}
 @media(max-width:420px){.hd{flex-wrap:wrap}.hd-l{width:100%}}
+/* 控制中心浮层模式（?cc=1）：满高布局 + 内滚动 */
+html.cc-mode,html.cc-mode body{height:100%;overflow-y:auto;background:#0d0a0c}
+html.cc-mode body{padding:10px}
+html.cc-mode .sb{margin:0 0 10px}
 </style>
 </head>
 <body>
 <div class="sb" id="xueyue-sb"><div class="loading">血月正在升起…</div></div>
 <script>
 (function () {
+  var ccMode = /[?&]cc=1/.test(location.search);
+  if (ccMode) { try { document.documentElement.classList.add('cc-mode'); } catch (e) {} }
   /* ===== 酒馆助手接口兼容层（照同级生2 实测可用模式：接口在 window/parent/top 三层找）===== */
   var TH_HOSTS = [window, window.parent, window.top].filter(function (w, i, arr) { return w && arr.indexOf(w) === i; });
   function pickHostFn(name) {
@@ -140,6 +146,7 @@ details.block>summary .caret{margin-left:auto;transition:transform .2s}
     h += (我死 ? '<span class="pill dead">你死了</span>' : '<span class="pill safe">存活 ' + (存活.length + (我死 ? 0 : 1)) + '/12</span>');
     h += '</div><div style="display:flex;gap:5px;flex-shrink:0">';
     h += '<button class="btn ghost" id="xy-rfr">↻</button>';
+    if (ccMode) h += '<button class="btn ghost" id="xy-cc-close">✕</button>';
     if (!已终局 && !未指派) h += '<button class="btn ghost" id="xy-rst">重开</button>';
     h += '</div></div>';
 
@@ -300,6 +307,7 @@ details.block>summary .caret{margin-left:auto;transition:transform .2s}
 
   function 绑定事件(s, v, 我, 存活) {
     $('#xy-rfr').off('click').on('click', render);
+    $('#xy-cc-close').off('click').on('click', function () { try { window.parent.postMessage({ type: 'xy-cc-close' }, '*'); } catch (e) {} });
     $('#xy-start').off('click').on('click', function () {
       var el = document.getElementById('xy-start');
       if (el) { el.disabled = true; el.textContent = '血月升起中…'; }
