@@ -498,10 +498,151 @@ html.custom-cc-mode .custom-sb{margin:0 0 10px}
           if (Mvu.events.VARIABLE_INITIALIZED) onEvt(Mvu.events.VARIABLE_INITIALIZED, 排定刷新);
         }
       } catch (e3) {}
+      控制中心.init();
     } catch (e) {
       try { document.getElementById('xueyue-sb').innerHTML = '<div class="err">面板错误：' + esc(e && e.message || e) + '</div>'; } catch (e2) {}
     }
   };
+
+  // ═══ 控制中心（规范 §5.7：JS 构造面板注入宿主 + 魔杖入口 + 单例 + 事件委托 + disposers）═══
+  // 分工：楼层面板=HUD（状态与日常操作）；控制中心=总览/关系网/大事记/速查/重开（高级面）
+  var 控制中心 = (function () {
+    var PANEL_ID = 'xy-cc-panel', WAND_ID = 'xy-cc-wand', STYLE_ID = 'xy-cc-style';
+    var disposers = [];
+    function hW() { try { if (window.parent && window.parent !== window && window.parent.document) return window.parent; } catch (e) {} return window; }
+    function hD() { try { return hW().document || document; } catch (e) { return document; } }
+    function 样式() {
+      var d = hD();
+      if (d.getElementById(STYLE_ID)) return;
+      var st = d.createElement('style'); st.id = STYLE_ID;
+      st.textContent =
+        '#xy-cc-panel{position:fixed;right:0;top:0;width:min(460px,100vw);height:100vh;z-index:2147483000;background:linear-gradient(160deg,#140a0d,#080507);color:#f2e6e0;overflow-y:auto;box-sizing:border-box;padding:12px;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;font-size:13px;line-height:1.6;box-shadow:-8px 0 32px rgba(0,0,0,.7)}' +
+        '#xy-cc-panel .cc-hd{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(220,80,60,.25);padding-bottom:8px;margin-bottom:10px}' +
+        '#xy-cc-panel .cc-t{font-weight:800;color:#dc2626;letter-spacing:1px}' +
+        '#xy-cc-panel .cc-pill{font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid rgba(220,80,60,.35);color:#f0b4a8;margin-right:4px;white-space:nowrap}' +
+        '#xy-cc-panel .cc-btn{background:rgba(220,80,60,.14);border:1px solid rgba(220,80,60,.4);color:#f0b4a8;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;margin-right:6px}' +
+        '#xy-cc-panel .cc-btn:hover{background:rgba(220,80,60,.3);color:#fff}' +
+        '#xy-cc-panel .cc-btn.p{background:rgba(220,38,38,.35);border-color:rgba(220,38,38,.6);color:#fff;font-weight:700}' +
+        '#xy-cc-panel .cc-sec{margin:10px 0 6px;font-size:11px;color:#9a8f8a;font-weight:700;border-bottom:1px solid rgba(220,80,60,.12);padding-bottom:2px}' +
+        '#xy-cc-panel .cc-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}' +
+        '#xy-cc-panel .cc-nm{width:52px;font-size:11px;color:#f0b4a8;flex-shrink:0}' +
+        '#xy-cc-panel .cc-num{width:36px;font-size:10px;flex-shrink:0}' +
+        '#xy-cc-panel .cc-bar{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}' +
+        '#xy-cc-panel .cc-bar>div{height:100%;border-radius:3px}' +
+        '#xy-cc-panel .cc-muted{color:#9a8f8a;font-size:11px;white-space:pre-wrap;line-height:1.7}' +
+        '#xy-cc-panel .cc-dead{color:#9a8f8a;text-decoration:line-through}';
+      (d.head || d.documentElement).appendChild(st);
+    }
+    function 关闭() { try { var p = hD().getElementById(PANEL_ID); if (p) p.remove(); } catch (e) {} }
+    function 渲染() {
+      var d = hD();
+      var p = d.getElementById(PANEL_ID);
+      if (!p) return;
+      var D = 读变量(); var s = D.s, v = D.v || {};
+      var e2 = function (x) { return esc(x); };
+      var h = '';
+      if (!s || !s._世界) {
+        p.innerHTML = '<div class="cc-hd"><span class="cc-t">血月七夜 · 控制中心</span><span><button class="cc-btn" data-act="close">关闭</button></span></div><div class="cc-muted">变量未就绪——发送第一条消息后打开。</div>';
+        return;
+      }
+      var W = s._世界, P = s._玩家;
+      var 存活 = String(W.存活名单 || '').split('|').filter(Boolean);
+      h += '<div class="cc-hd"><span class="cc-t">血月七夜 · 控制中心</span><span>';
+      h += '<button class="cc-btn" data-act="refresh">↻</button>';
+      h += '<button class="cc-btn p" data-act="close">关闭</button></span></div>';
+      h += '<div style="margin-bottom:8px"><span class="cc-pill">第 ' + e2(W.天数) + ' ' + e2(W.阶段) + '</span>';
+      h += '<span class="cc-pill">身份：' + e2(P.身份 === '未指派' ? '未指派' : (P.身份 === '狼' ? '狼' : P.身份 === '民' ? '民' : '持物·' + P.身份)) + '</span>';
+      h += '<span class="cc-pill">存活 ' + (存活.length + (P.存活 === '存活' ? 1 : 0)) + '/12</span></div>';
+      if (P.身份 === '未指派') {
+        h += '<button class="cc-btn p" data-act="start">☾ 开始 · 迎接血梦</button><div class="cc-muted" style="margin-top:6px">指派身份 → 第一夜降临 → 楼层面板切换到行动界面。</div>';
+      }
+      // 血梦/同伴（私密，来自脚本变量）
+      if (v.血梦) h += '<div class="cc-sec">血梦</div><div class="cc-muted">' + e2(v.血梦) + '</div>';
+      if (P.身份 === '狼' && v.同伴) h += '<div class="cc-muted">同伴：' + e2(v.同伴) + '</div>';
+      // 关系网
+      if (s.人物) {
+        h += '<div class="cc-sec">她们与你的关系（♥好感 / 疑怀疑）</div>';
+        var ns = Object.keys(s.人物);
+        for (var i = 0; i < ns.length; i++) {
+          var n = ns[i], g = s.人物[n].好感 || 0, y = s.人物[n].怀疑 || 0;
+          var dead = 存活.indexOf(n) < 0;
+          h += '<div class="cc-row"><span class="cc-nm' + (dead ? ' cc-dead' : '') + '">' + e2(n) + '</span>';
+          h += '<span class="cc-num" style="color:' + (g >= 60 ? '#10b981' : '#9a8f8a') + '">♥' + g + '</span>';
+          h += '<div class="cc-bar"><div style="width:' + g + '%;background:linear-gradient(90deg,#7f1d1d,#f472b6)"></div></div>';
+          h += '<span class="cc-num" style="color:' + (y >= 40 ? '#f59e0b' : '#9a8f8a') + '">疑' + y + '</span>';
+          h += '<div class="cc-bar"><div style="width:' + y + '%;background:linear-gradient(90deg,#78350f,#f59e0b)"></div></div></div>';
+        }
+      }
+      // 本局大事记
+      if (W.公开事实) h += '<div class="cc-sec">本局大事记</div><div class="cc-muted">' + e2(W.公开事实) + '</div>';
+      // 玩法速查
+      h += '<div class="cc-sec">玩法速查</div><div class="cc-muted">12 人：4 狼 / 4 民 / 4 持物（铜镜·药囊·银匕·草汁）。夜=入睡并安排行动（狼选猎物、持物人布防、可约同屋）；昼=讨论、质询、投票处决（过半即刑）。狼全灭=好人胜；狼数追平或七夜耗尽=狼胜。物只对持有者显现，使用无声无息——除了你自己，没人知道。</div>';
+      // 高级
+      h += '<div class="cc-sec">高级</div>';
+      if (P.存活 !== '死亡' && !/【终局】/.test(W.公开事实 || '')) h += '<button class="cc-btn" data-act="reset">重开一局</button>';
+      if (P.存活 === '死亡') h += '<div class="cc-muted">你已出局。可在楼层面板重开。</div>';
+      p.innerHTML = h;
+    }
+    function 打开() {
+      try {
+        var d = hD();
+        if (d.getElementById(PANEL_ID)) { 关闭(); return; }
+        样式();
+        var p = d.createElement('div');
+        p.id = PANEL_ID;
+        // 事件委托（规范：单监听器管理全部交互）
+        p.addEventListener('click', function (e) {
+          var t = e.target && e.target.closest ? e.target.closest('[data-act]') : null;
+          if (!t) return;
+          var act = t.getAttribute('data-act');
+          if (act === 'close') 关闭();
+          else if (act === 'refresh') 渲染();
+          else if (act === 'start') { t.disabled = true; t.textContent = '血月升起中…'; (async function () { try { var 裁 = await wait裁判(); await 裁.指派(); await 推进('夜深了，我躺下，任由困意把我拖进梦里。'); } catch (err) { t.textContent = '启动失败：' + (err && err.message || err); } })(); }
+          else if (act === 'reset') { (async function () { try { if (!window.confirm('清除所有进度，回到投宿之夜？建议重开后开新聊天。')) return; var 裁 = await wait裁判(); await 裁.重开(); 渲染(); } catch (err) {} })(); }
+        });
+        d.body.appendChild(p);
+        渲染();
+      } catch (e) {}
+    }
+    function 魔杖() {
+      try {
+        var d = hD();
+        var host = d.querySelector('#extensionsMenu') || d.querySelector('.extensionsMenu') || d.body;
+        var wrap = d.getElementById(WAND_ID);
+        if (!wrap) {
+          wrap = d.createElement('span'); wrap.id = WAND_ID;
+          var b = d.createElement('button');
+          b.textContent = '血月七夜'; b.title = '控制中心 · 总览与高级操作';
+          b.className = 'menu_button menu_button_icon';
+          b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); 打开(); });
+          wrap.appendChild(b);
+        }
+        if (wrap.parentNode !== host) host.appendChild(wrap);
+      } catch (e) {}
+    }
+    function init() {
+      try { if (window.__xyCC && window.__xyCC.destroy) window.__xyCC.destroy(); } catch (e) {} // 防重入
+      魔杖(); setTimeout(魔杖, 1000);
+      try {
+        var on = window.eventOn || hW().eventOn;
+        var ev = window.tavern_events || hW().tavern_events || {};
+        if (typeof on === 'function') {
+          ['CHAT_CHANGED', 'CHARACTER_MESSAGE_RENDERED'].forEach(function (k) {
+            if (!ev[k]) return;
+            try { var dd = on(ev[k], function () { setTimeout(魔杖, 250); }); if (dd && dd.stop) disposers.push(function () { dd.stop(); }); } catch (e) {}
+          });
+          // 变量更新时若面板开着 → 自动刷新
+          var Mvu = pickHostValue('Mvu');
+          if (Mvu && Mvu.events && Mvu.events.VARIABLE_UPDATE_ENDED) {
+            try { on(Mvu.events.VARIABLE_UPDATE_ENDED, function () { setTimeout(渲染, 600); }); } catch (e) {}
+          }
+        }
+      } catch (e) {}
+      return { open: 打开, close: 关闭, destroy: function () { while (disposers.length) { try { disposers.pop()(); } catch (e) {} } 关闭(); } };
+    }
+    return init();
+  })();
+  try { window.__xyCC = 控制中心; } catch (e) {}
   启动();
   window.__xyCCRerender = function () { try { render(); } catch (e) {} };
   // 状态变化自动刷新（防抖）——操作后/新楼层生成后面板自动更新，无需手动 ↻
