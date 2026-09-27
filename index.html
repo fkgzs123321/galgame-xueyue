@@ -153,7 +153,7 @@ html.custom-cc-mode .custom-sb{margin:0 0 10px}
   function emitEvt(n, p) { var f = pickHostFn('eventEmit'); if (!f) throw new Error('eventEmit 不可用'); return f(n, p); }
   function onEvt(n, f) { var g = pickHostFn('eventOn'); if (!g) return; try { g(n, f); } catch (e) {} }
   function getHost$() { return pickHostValue('$') || pickHostValue('jQuery'); }
-  function wait裁判() { var f = pickHostFn('waitGlobalInitialized'); if (!f) return Promise.reject(new Error('waitGlobalInitialized 不可用')); return f('血月裁判'); }
+  function wait裁判() { var f = pickHostFn('waitGlobalInitialized'); if (!f) return Promise.reject(new Error('waitGlobalInitialized 不可用')); return Promise.race([f('血月裁判'), new Promise(function (_, rej) { setTimeout(function () { rej(new Error('裁判脚本未响应——请确认酒馆助手已加载「血月裁判」脚本')); }, 3500); })]); }
   function slash(c) { var f = pickHostFn('triggerSlash'); if (!f) return Promise.reject(new Error('triggerSlash 不可用')); return f(c); }
   // 控制中心动作：结算（裁判接口）→ 以玩家身份 send 行动 → trigger 生成（原生全链路：正则/MVU/面板渲染自动）
   async function 推进(sendText) { await slash('/send ' + String(sendText).replace(/\|/g, '∣').replace(/"/g, '”') + ' | /trigger await=true'); }
