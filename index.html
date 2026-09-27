@@ -544,6 +544,32 @@ html.custom-cc-mode .custom-sb{margin:0 0 10px}
     }
 
     // ── 内容层（唯一渲染点，三种外壳共用 · 规范 §2.5 ShellAdapter）──
+    // ── 文风与思维链开关（默认全关，注入提示词 + filter 实时生效 · 规范 §4.5/§5.12）──
+    var 文风提示 = {
+      血腥: '【血腥 · 已开启】伤、血、尸、内脏、撕裂——直给到底：血的温度气味与粘稠、伤口翻开的层次、肉与骨的质感。不回避，不美化，不做文学化淡化。',
+      恐怖: '【恐怖 · 已开启】恐惧靠未知与身体反应，不靠形容词。写黑暗里看不见的部分、听觉与嗅觉的异常、身体先于意识的僵直。留白优先：写「有什么」，不写清「是什么」。',
+      母猪: '【母猪 · 已开启】身体向着雌畜的失控推：发情、失禁、高潮停不下来、语言碎成哼鸣、腰臀不受控地追。器官用词按母猪词料直给（骚逼、淫水、发情、母狗），动作与体液写到饱和。',
+      骚妈: '【骚妈 · 已开启】成熟女性的身体与母性同时在场：生育过的细节（涨奶、腰腹的软、妊娠纹），照顾人的手与发情的腰臀用同一具身体写。母性不抑制骚，是骚的另一层底味。',
+      思维链: '【思维链 · 已开启】每次回复前先做一轮推演，并用折叠块输出：<details><summary>思维链</summary>本轮玩家意图 · 在场角色各自的知情与立场 · 变量变化 · 下一步钩子</details>，然后照推演写正文。'
+    };
+    var 设置键 = 'xy-card:style-settings';
+    function 读设置() { try { return JSON.parse(hW().localStorage.getItem(设置键) || '{}'); } catch (e) { return {}; } }
+    function 存设置(k, v) { var o = 读设置(); o[k] = !!v; try { hW().localStorage.setItem(设置键, JSON.stringify(o)); } catch (e) {} 应用注入(); 刷新内容(); }
+    function 应用注入() {
+      try {
+        var ip = pickHostFn('injectPrompts'), un = pickHostFn('uninjectPrompts');
+        if (!ip) return;
+        var 全部 = Object.keys(文风提示).map(function (k) {
+          return {
+            id: 'xy-style-' + k, position: 'in_chat', depth: 0, role: 'system',
+            content: 文风提示[k], should_scan: false,
+            filter: function () { try { return !!读设置()[k]; } catch (e) { return false; } }
+          };
+        });
+        if (un) un(Object.keys(文风提示).map(function (k) { return 'xy-style-' + k; }));
+        window.__xyInjected = ip(全部, { once: false }); // 持续生效；开关由 filter 实时判定
+      } catch (e) {}
+    }
     function 取值(name) { try { var el = hD().querySelector('input[name="' + name + '"]:checked'); return el ? el.value : ''; } catch (e) { return ''; } }
     function 选项(name, val, label) {
       return '<label style="display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.03);border:1px solid rgba(154,143,138,.18);border-radius:7px;padding:6px 9px;margin-bottom:4px;cursor:pointer;font-size:12px"><input type="radio" name="' + name + '" value="' + val + '" style="accent-color:#dc2626">' + label + '</label>';
@@ -631,6 +657,16 @@ html.custom-cc-mode .custom-sb{margin:0 0 10px}
       }
       if (W.公开事实) h += '<div class="xy-sec">本局大事记</div><div class="xy-muted">' + e2(W.公开事实) + '</div>';
       h += '<div class="xy-sec">玩法速查</div><div class="xy-muted">12 人：4 狼 / 4 民 / 4 持物（铜镜·药囊·银匕·草汁）。夜=入睡并安排行动（狼选猎物、持物人布防、可约同屋）；昼=讨论、质询、投票处决（过半即刑）。狼全灭=好人胜；狼数追平或七夜耗尽=狼胜。物只对持有者显现，使用无声无息——除了你自己，没人知道。</div>';
+      // 文风与思维链开关（默认关闭 · 勾选即生效）
+      h += '<div class="xy-sec">文风与思维链（默认关闭 · 勾选即生效）</div>';
+      var 设 = 读设置();
+      var 键表 = Object.keys(文风提示);
+      for (var i8 = 0; i8 < 键表.length; i8++) {
+        var k8 = 键表[i8];
+        h += '<label style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.03);border:1px solid rgba(154,143,138,.18);border-radius:7px;padding:8px 10px;margin-bottom:5px;cursor:pointer;font-size:12px">' +
+          '<input type="checkbox" data-sw="' + k8 + '"' + (设[k8] ? ' checked' : '') + ' style="accent-color:#dc2626"> ' + k8 +
+          '<span style="margin-left:auto;font-size:10px;color:' + (设[k8] ? '#10b981' : '#9a8f8a') + '">' + (设[k8] ? '已开启' : '关闭') + '</span></label>';
+      }
       h += '<div class="xy-sec">高级</div>';
       if (P.存活 !== '死亡' && !/【终局】/.test(W.公开事实 || '')) h += '<button class="xy-act" data-act="reset">重开一局</button>';
       h += '<button class="xy-act" data-act="to-drawer">抽屉外壳</button><button class="xy-act" data-act="to-float">浮窗外壳</button>';
@@ -648,6 +684,10 @@ html.custom-cc-mode .custom-sb{margin:0 0 10px}
     }
     // 外壳内动作委托（唯一监听器）
     function 绑动作(root) {
+      root.addEventListener('change', function (e) {
+        var t = e.target;
+        if (t && t.getAttribute && t.getAttribute('data-sw')) 存设置(t.getAttribute('data-sw'), t.checked);
+      });
       root.addEventListener('click', function (e) {
         var t = e.target && e.target.closest ? e.target.closest('[data-act]') : null;
         if (!t) return;
@@ -886,13 +926,14 @@ html.custom-cc-mode .custom-sb{margin:0 0 10px}
       try { if (window.__xyEntry && window.__xyEntry.destroy) window.__xyEntry.destroy(); } catch (e) {} // 防重入
       挂悬浮球(); setTimeout(挂悬浮球, 800);
       魔杖(); setTimeout(魔杖, 1000);
+      应用注入(); setTimeout(应用注入, 1500); // 注入文风/思维链提示（filter 按开关实时判定）
       try {
         var on = window.eventOn || hW().eventOn;
         var ev = window.tavern_events || hW().tavern_events || {};
         if (typeof on === 'function') {
           ['CHAT_CHANGED', 'CHARACTER_MESSAGE_RENDERED'].forEach(function (k) {
             if (!ev[k]) return;
-            try { var dd = on(ev[k], function () { setTimeout(挂悬浮球, 250); setTimeout(魔杖, 250); }); if (dd && dd.stop) disposers.push(function () { dd.stop(); }); } catch (e) {}
+            try { var dd = on(ev[k], function () { setTimeout(挂悬浮球, 250); setTimeout(魔杖, 250); setTimeout(应用注入, 400); }); if (dd && dd.stop) disposers.push(function () { dd.stop(); }); } catch (e) {}
           });
           var Mvu = pickHostValue('Mvu');
           if (Mvu && Mvu.events && Mvu.events.VARIABLE_UPDATE_ENDED) {
@@ -905,6 +946,7 @@ html.custom-cc-mode .custom-sb{margin:0 0 10px}
     return init();
   })();
   try { window.__xyEntry = 入口层; } catch (e) {}
+
 
 
 
