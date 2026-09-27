@@ -147,6 +147,8 @@ details.block>summary .caret{margin-left:auto;transition:transform .2s}
     if (未指派) {
       h += '<div class="hint moon">身份说明：' + esc(身份说明.未) + '</div>';
       h += '<div class="hint">发第一条消息，血梦会在月升时找到你。</div>';
+      h += '<div class="act-row"><button class="btn primary" id="xy-start">☾ 开始 · 迎接血梦</button></div>';
+      h += '<div class="hint">点开始：身份指派 → 第一夜降临 → 面板切换为行动界面</div>';
     } else {
       var 职显示 = 我 === '狼' ? '狼' : 我 === '民' ? '民' : 神职名[我];
       h += '<div class="muted">你是 —— <b style="color:#fbbf24">' + esc(职显示) + '</b></div>';
@@ -298,6 +300,20 @@ details.block>summary .caret{margin-left:auto;transition:transform .2s}
 
   function 绑定事件(s, v, 我, 存活) {
     $('#xy-rfr').off('click').on('click', render);
+    $('#xy-start').off('click').on('click', function () {
+      var el = document.getElementById('xy-start');
+      if (el) { el.disabled = true; el.textContent = '血月升起中…'; }
+      (async function () {
+        try {
+          var 裁判 = await wait裁判();
+          await 裁判.指派();
+          await 推进('夜深了，我躺下，任由困意把我拖进梦里。');
+          setTimeout(render, 1500);
+        } catch (e) {
+          try { if (el) { el.disabled = false; el.textContent = '启动失败：' + (e && e.message || e) + '（点↻重试）'; } } catch (e2) {}
+        }
+      })();
+    });
     $('#xy-take').off('click').on('click', async function () {
       try { var 裁判 = await wait裁判(); await 裁判.取物(); }
       catch (e) { emitEvt('血月-取物', {}); }
