@@ -409,7 +409,7 @@ html.custom-cc-mode .custom-sb{margin:0 0 10px}
         try {
           var 裁判 = await wait裁判();
           await 裁判.夜结算(行动);
-          await 推进('我依着白日的安排，闩好了门，闭上了眼。');
+          await 推进('我闩好了门。再睁眼时，屋里是清晨的光。');
           setTimeout(render, 1200);
         } catch (e) { emitEvt('血月-入睡', 行动); setTimeout(render, 800); }
       });
@@ -422,7 +422,7 @@ html.custom-cc-mode .custom-sb{margin:0 0 10px}
         try {
           var 裁判 = await wait裁判();
           await 裁判.投票处决({ 目标: 目标, 以银: 以银 });
-          await 推进('我把票投给了 ' + 目标 + '，看着她被带上审判台。');
+          await 推进('我把票投了出去，看着审判的结果落定。');
           setTimeout(render, 1200);
         } catch (e) { emitEvt('血月-投票', { 目标: 目标, 以银: 以银 }); setTimeout(render, 800); }
       });
@@ -434,13 +434,13 @@ html.custom-cc-mode .custom-sb{margin:0 0 10px}
         try {
           var 裁判 = await wait裁判();
           await 裁判.下毒('旅人', 目标);
-          await 推进('我在无人注意的时候，把东西下进了 ' + 目标 + ' 的饮食里。');
+          await 推进('我趁没有人注意的时候，做完了那件事。');
           setTimeout(render, 1200);
         } catch (e) { emitEvt('血月-下毒', { 目标: 目标 }); setTimeout(render, 800); }
       });
     });
     $('#xy-rst').off('click').on('click', function () {
-      确认弹窗('重开一局', '清除所有进度，回到投宿之夜，身份重新洗牌。\n确定？', async function () {
+      确认弹窗('重开一局', '清除所有进度，回到投宿之夜，身份重新洗牌。\n建议重开后开一条新聊天：旧楼层的叙事还留在上面，变量已经重置了。\n确定？', async function () {
         try { var 裁判 = await wait裁判(); await 裁判.重开(); }
         catch (e) { emitEvt('血月-重开', {}); }
         setTimeout(render, 800);
