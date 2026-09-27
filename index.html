@@ -208,7 +208,7 @@ details.block>summary .caret{margin-left:auto;transition:transform .2s}
       h += '<div class="act-row"><button class="btn primary" id="xy-vote">投票</button></div>';
       var 毒可用 = 我持('药囊') && s.$物品.毒药已用 === '否';
       if (毒可用) {
-        h += '<div class="sect">毒药（一次性 · 作有时间差 · 投毒自带暴露面）</div>';
+        h += '<div class="sect">毒药（一次性 · 无声无息 · 但死状骗不了验尸的人）</div>';
         for (var d = 0; d < 存活.length; d++) h += radio('poison', 存活[d], esc(存活[d]), '');
         h += '<div class="act-row"><button class="btn" id="xy-poison">下毒</button></div>';
       }
@@ -294,7 +294,7 @@ details.block>summary .caret{margin-left:auto;transition:transform .2s}
     $('#xy-poison').off('click').on('click', function () {
       var 目标 = 取值('poison');
       if (!目标) { 弹窗('未选择', '你没有选择目标。'); return; }
-      确认弹窗('下毒', '你将毒杀 ' + 目标 + '。\n毒发有时间差；进食记录会指向你。', function () {
+      确认弹窗('下毒', '你将毒杀 ' + 目标 + '。\n无声无息——除了你没人知道是谁下的。\n但死状骗不了验尸的人。', function () {
         emitEvt('血月-下毒', { 目标: 目标 }); setTimeout(render, 800);
       });
     });
