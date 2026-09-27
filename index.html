@@ -791,16 +791,35 @@ html.custom-cc-mode .custom-sb{margin:0 0 10px}
     // ── 命令注册表（规范 §1.1：入口只 dispatch 命令，不复制业务）──
     var 命令 = { float: 开浮窗, drawer: 开抽屉, hud: function () {}, close: 关全部 };
 
+    // ── 魔杖入口（C11 §1.2：Wand 使用既有菜单，统一路由）──
+    function 魔杖() {
+      try {
+        var d = hD(); 样式();
+        var host = d.querySelector('#extensionsMenu') || d.querySelector('.extensionsMenu') || d.body;
+        var wrap = d.getElementById('xy-wand');
+        if (!wrap) {
+          wrap = d.createElement('span'); wrap.id = 'xy-wand';
+          var b = d.createElement('button');
+          b.textContent = '血月七夜'; b.title = '控制中心（浮窗/抽屉由悬浮球轮盘切换）';
+          b.className = 'menu_button menu_button_icon';
+          b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); 开浮窗(); });
+          wrap.appendChild(b);
+        }
+        if (wrap.parentNode !== host) host.appendChild(wrap);
+      } catch (e) {}
+    }
+
     function init() {
       try { if (window.__xyEntry && window.__xyEntry.destroy) window.__xyEntry.destroy(); } catch (e) {} // 防重入
       挂悬浮球(); setTimeout(挂悬浮球, 800);
+      魔杖(); setTimeout(魔杖, 1000);
       try {
         var on = window.eventOn || hW().eventOn;
         var ev = window.tavern_events || hW().tavern_events || {};
         if (typeof on === 'function') {
           ['CHAT_CHANGED', 'CHARACTER_MESSAGE_RENDERED'].forEach(function (k) {
             if (!ev[k]) return;
-            try { var dd = on(ev[k], function () { setTimeout(挂悬浮球, 250); }); if (dd && dd.stop) disposers.push(function () { dd.stop(); }); } catch (e) {}
+            try { var dd = on(ev[k], function () { setTimeout(挂悬浮球, 250); setTimeout(魔杖, 250); }); if (dd && dd.stop) disposers.push(function () { dd.stop(); }); } catch (e) {}
           });
           var Mvu = pickHostValue('Mvu');
           if (Mvu && Mvu.events && Mvu.events.VARIABLE_UPDATE_ENDED) {
@@ -813,6 +832,7 @@ html.custom-cc-mode .custom-sb{margin:0 0 10px}
     return init();
   })();
   try { window.__xyEntry = 入口层; } catch (e) {}
+
 
   启动();
   window.__xyCCRerender = function () { try { render(); } catch (e) {} };
