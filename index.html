@@ -307,7 +307,10 @@ html.cc-mode .sb{margin:0 0 10px}
 
   function 绑定事件(s, v, 我, 存活) {
     $('#xy-rfr').off('click').on('click', render);
-    $('#xy-cc-close').off('click').on('click', function () { try { window.parent.postMessage({ type: 'xy-cc-close' }, '*'); } catch (e) {} });
+    $('#xy-cc-close').off('click').on('click', function () {
+      try { var r = document.getElementById('xy-cc-root'); if (r) { r.remove(); return; } } catch (e) {}
+      try { window.parent.postMessage({ type: 'xy-cc-close' }, '*'); } catch (e) {}
+    });
     $('#xy-start').off('click').on('click', function () {
       var el = document.getElementById('xy-start');
       if (el) { el.disabled = true; el.textContent = '血月升起中…'; }
