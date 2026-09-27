@@ -125,6 +125,7 @@ details.block>summary .caret{margin-left:auto;transition:transform .2s}
     h += '<details class="block" open><summary><span class="t identity">☰ 你的身份</span><span class="caret">▸</span></summary><div class="block-body">';
     if (未指派) {
       h += '<div class="hint moon">身份说明：' + esc(身份说明.未) + '</div>';
+      h += '<div class="hint">发第一条消息，血梦会在月升时找到你。</div>';
     } else {
       var 职显示 = 我 === '狼' ? '狼' : 我 === '民' ? '民' : 神职名[我];
       h += '<div class="muted">你是 —— <b style="color:#fbbf24">' + esc(职显示) + '</b></div>';
@@ -136,6 +137,17 @@ details.block>summary .caret{margin-left:auto;transition:transform .2s}
       if (v.玩家被种夜 > 0 && !已终局) h += '<div class="hint">你身上有什么东西在发烫。它一天比一天明显。</div>';
     }
     h += '</div></details>';
+
+    // ── 玩法说明（未指派态专属：玩家的规则入口）──
+    if (未指派) {
+      h += '<details class="block" open><summary><span class="t broadcast">❖ 玩法说明（血月七夜 · 生存局）</span><span class="caret">▸</span></summary><div class="block-body">';
+      h += '<div class="sect">你是谁</div><div class="bline">你是十二人之一：四狼、四民、四持物。你的身份在第一夜的血梦里揭晓——揭晓前，你和所有人一样只是个客人。</div>';
+      h += '<div class="sect">每一夜</div><div class="bline">在「入夜行动」里安排：狼选猎物；持物人涂门、下麻沸散、镜验、带不带银匕；任何人都可以约人同屋（好感 ≥60 才会被接纳）。点「闭眼入睡」结算——夜里发生的事，明早谁都不记得，只有身体和尸体记得。</div>';
+      h += '<div class="sect">每一个白天</div><div class="bline">尸体、脚印、尸检结论、各人的梦——在对话里讨论、质询、结盟、撒谎。然后在「白天行动」里投票处决：过半即刑，不可逆，死状验真伪。持药囊者还可以下毒。</div>';
+      h += '<div class="sect">胜负</div><div class="bline">狼全灭=好人胜；狼数追平好人数或七夜耗尽=狼胜；你死了=死档（可随时重开重掷）。</div>';
+      h += '<div class="hint">操作都走这个面板。变量数值不进正文——面板是你的仪表盘，不是剧本。</div>';
+      h += '</div></details>';
+    }
 
     // ── 终局卡 ──
     var 终局匹配 = (W.公开事实 || '').match(/【终局】(\{.*\})/);
