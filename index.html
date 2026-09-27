@@ -190,6 +190,22 @@ details.block>summary .caret{margin-left:auto;transition:transform .2s}
     for (var j = 0; j < 死者们.length; j++) h += '<span class="chip dead">' + esc(死者们[j]) + '</span>';
     h += '</div></div></details>';
 
+    // ── 关系网（好感/怀疑可视化——面板的有用性）──
+    if (!未指派 && s.人物) {
+      h += '<details class="block"><summary><span class="t mirror">♥ 她们与你的关系</span><span class="caret">▸</span></summary><div class="block-body">';
+      for (const n of Object.keys(s.人物)) {
+        var g = s.人物[n].好感 || 0, w2 = s.人物[n].怀疑 || 0;
+        var 死名 = 存活.indexOf(n) < 0;
+        h += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="width:52px;font-size:11px;color:' + (死名 ? '#9a8f8a' : '#f0b4a8') + ';flex-shrink:0' + (死名 ? ';text-decoration:line-through' : '') + '">' + esc(n) + '</span>';
+        h += '<span style="width:34px;font-size:10px;color:' + (g >= 60 ? '#10b981' : '#9a8f8a') + '">♥' + g + '</span>';
+        h += '<div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + g + '%;background:linear-gradient(90deg,#7f1d1d,#f472b6)"></div></div>';
+        h += '<span style="width:34px;font-size:10px;color:' + (w2 >= 40 ? '#f59e0b' : '#9a8f8a') + '">疑' + w2 + '</span>';
+        h += '<div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + w2 + '%;background:linear-gradient(90deg,#78350f,#f59e0b)"></div></div></div>';
+      }
+      h += '<div class="hint">♥ 好感（高=她会护你/信你）· 疑 怀疑（高=投票时她第一个指你）。好感 ≥60 才会答应同屋。</div>';
+      h += '</div></details>';
+    }
+
     if (是夜 && !未指派 && !我死 && !已终局) {
       h += '<details class="block" open><summary><span class="t action">☾ 入夜行动</span><span class="caret">▸</span></summary><div class="block-body">';
       h += 夜行动HTML(s, v, 我, 存活);
