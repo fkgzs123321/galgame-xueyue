@@ -498,151 +498,322 @@ html.custom-cc-mode .custom-sb{margin:0 0 10px}
           if (Mvu.events.VARIABLE_INITIALIZED) onEvt(Mvu.events.VARIABLE_INITIALIZED, 排定刷新);
         }
       } catch (e3) {}
-      控制中心.init();
     } catch (e) {
       try { document.getElementById('xueyue-sb').innerHTML = '<div class="err">面板错误：' + esc(e && e.message || e) + '</div>'; } catch (e2) {}
     }
   };
 
-  // ═══ 控制中心（规范 §5.7：JS 构造面板注入宿主 + 魔杖入口 + 单例 + 事件委托 + disposers）═══
-  // 分工：楼层面板=HUD（状态与日常操作）；控制中心=总览/关系网/大事记/速查/重开（高级面）
-  var 控制中心 = (function () {
-    var PANEL_ID = 'xy-cc-panel', WAND_ID = 'xy-cc-wand', STYLE_ID = 'xy-cc-style';
-    var disposers = [];
+  // ═══ 入口层（C11 悬浮球 + C12 抽屉 + C13 浮窗 · 命令注册表统一路由 · ShellAdapter 共享内容层）═══
+  var 入口层 = (function () {
+    var ORB_ID = 'xy-orb', MENU_ID = 'xy-orb-menu', DRAWER_ID = 'xy-drawer', FLOAT_ID = 'xy-float', BODY_ID = 'xy-shell-body', STYLE_ID = 'xy-shell-style';
+    var KEY_ORB = 'xy-card:orb-placement', KEY_RECT = 'xy-card:hud-rect', V = 1;
+    var disposers = [], 拖动 = null;
     function hW() { try { if (window.parent && window.parent !== window && window.parent.document) return window.parent; } catch (e) {} return window; }
     function hD() { try { return hW().document || document; } catch (e) { return document; } }
+    function vw() { try { return hW().innerWidth || 1024; } catch (e) { return 1024; } }
+    function vh() { try { return hW().innerHeight || 768; } catch (e) { return 768; } }
+
+    // ── 样式（全部 id 选择器 → 不受 custom- 前缀影响，规范 §7.1）──
     function 样式() {
       var d = hD();
       if (d.getElementById(STYLE_ID)) return;
       var st = d.createElement('style'); st.id = STYLE_ID;
       st.textContent =
-        '#xy-cc-panel{position:fixed;right:0;top:0;width:min(460px,100vw);height:100vh;z-index:2147483000;background:linear-gradient(160deg,#140a0d,#080507);color:#f2e6e0;overflow-y:auto;box-sizing:border-box;padding:12px;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;font-size:13px;line-height:1.6;box-shadow:-8px 0 32px rgba(0,0,0,.7)}' +
-        '#xy-cc-panel .cc-hd{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(220,80,60,.25);padding-bottom:8px;margin-bottom:10px}' +
-        '#xy-cc-panel .cc-t{font-weight:800;color:#dc2626;letter-spacing:1px}' +
-        '#xy-cc-panel .cc-pill{font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid rgba(220,80,60,.35);color:#f0b4a8;margin-right:4px;white-space:nowrap}' +
-        '#xy-cc-panel .cc-btn{background:rgba(220,80,60,.14);border:1px solid rgba(220,80,60,.4);color:#f0b4a8;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;margin-right:6px}' +
-        '#xy-cc-panel .cc-btn:hover{background:rgba(220,80,60,.3);color:#fff}' +
-        '#xy-cc-panel .cc-btn.p{background:rgba(220,38,38,.35);border-color:rgba(220,38,38,.6);color:#fff;font-weight:700}' +
-        '#xy-cc-panel .cc-sec{margin:10px 0 6px;font-size:11px;color:#9a8f8a;font-weight:700;border-bottom:1px solid rgba(220,80,60,.12);padding-bottom:2px}' +
-        '#xy-cc-panel .cc-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}' +
-        '#xy-cc-panel .cc-nm{width:52px;font-size:11px;color:#f0b4a8;flex-shrink:0}' +
-        '#xy-cc-panel .cc-num{width:36px;font-size:10px;flex-shrink:0}' +
-        '#xy-cc-panel .cc-bar{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}' +
-        '#xy-cc-panel .cc-bar>div{height:100%;border-radius:3px}' +
-        '#xy-cc-panel .cc-muted{color:#9a8f8a;font-size:11px;white-space:pre-wrap;line-height:1.7}' +
-        '#xy-cc-panel .cc-dead{color:#9a8f8a;text-decoration:line-through}';
+        // 悬浮球
+        '#xy-orb{position:fixed;z-index:2147482900;width:52px;height:52px;border-radius:50%;background:linear-gradient(160deg,#2a0f14,#140a0d);border:1px solid rgba(220,80,60,.6);color:#f0b4a8;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;user-select:none;touch-action:none;box-shadow:0 6px 20px rgba(0,0,0,.6);transition:transform .15s}' +
+        '#xy-orb:active{transform:scale(.94)}' +
+        '#xy-orb-menu{position:fixed;z-index:2147482950;background:linear-gradient(160deg,#1a0d10,#0d0809);border:1px solid rgba(220,80,60,.45);border-radius:12px;padding:8px;display:none;min-width:132px;box-shadow:0 10px 30px rgba(0,0,0,.7)}' +
+        '#xy-orb-menu.on{display:block}' +
+        '#xy-orb-menu button{display:block;width:100%;background:transparent;border:none;color:#f0b4a8;text-align:left;padding:9px 12px;border-radius:8px;font-size:13px;cursor:pointer}' +
+        '#xy-orb-menu button:hover{background:rgba(220,80,60,.18);color:#fff}' +
+        // 抽屉（C12）
+        '#xy-drawer{position:fixed;top:0;right:0;height:100vh;width:min(420px,92vw);z-index:2147482980;background:linear-gradient(160deg,#140a0d,#080507);box-shadow:-10px 0 36px rgba(0,0,0,.75);transform:translateX(102%);transition:transform .22s ease;display:flex;flex-direction:column;touch-action:pan-y}' +
+        '#xy-drawer.on{transform:translateX(0)}' +
+        '#xy-drawer-mask{position:fixed;inset:0;z-index:2147482975;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .22s}' +
+        '#xy-drawer-mask.on{opacity:1;pointer-events:auto}' +
+        // 浮窗（C13）
+        '#xy-float{position:fixed;z-index:2147482985;width:420px;height:70vh;min-width:280px;min-height:220px;background:linear-gradient(160deg,#140a0d,#080507);border:1px solid rgba(220,80,60,.35);border-radius:12px;display:none;flex-direction:column;box-shadow:0 16px 44px rgba(0,0,0,.75);overflow:hidden}' +
+        '#xy-float.on{display:flex}' +
+        // 壳内容
+        '.xy-shell-hd{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:10px 12px;border-bottom:1px solid rgba(220,80,60,.25);flex-shrink:0;touch-action:none}' +
+        '#xy-float .xy-shell-hd{cursor:grab}' +
+        '.xy-shell-hd b{color:#dc2626;letter-spacing:1px;font-size:14px}' +
+        '.xy-shell-hd .xy-btns{display:flex;gap:6px}' +
+        '.xy-shell-hd button{background:rgba(220,80,60,.14);border:1px solid rgba(220,80,60,.4);color:#f0b4a8;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;touch-action:auto}' +
+        '.xy-shell-hd button:hover{background:rgba(220,80,60,.3);color:#fff}' +
+        '.xy-shell-body{flex:1;overflow-y:auto;padding:12px;color:#f2e6e0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;font-size:13px;line-height:1.6}' +
+        '.xy-resize{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;touch-action:none}' +
+        '.xy-resize::after{content:"";position:absolute;right:4px;bottom:4px;width:9px;height:9px;border-right:2px solid rgba(220,80,60,.6);border-bottom:2px solid rgba(220,80,60,.6)}' +
+        // 内容元素
+        '.xy-sec{margin:10px 0 6px;font-size:11px;color:#9a8f8a;font-weight:700;border-bottom:1px solid rgba(220,80,60,.12);padding-bottom:2px}' +
+        '.xy-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}' +
+        '.xy-nm{width:52px;font-size:11px;color:#f0b4a8;flex-shrink:0}' +
+        '.xy-num{width:36px;font-size:10px;flex-shrink:0}' +
+        '.xy-bar{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}' +
+        '.xy-bar>div{height:100%;border-radius:3px}' +
+        '.xy-muted{color:#9a8f8a;font-size:11px;white-space:pre-wrap;line-height:1.7}' +
+        '.xy-pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid rgba(220,80,60,.35);color:#f0b4a8;margin:0 4px 4px 0;white-space:nowrap}' +
+        '.xy-act{background:rgba(220,80,60,.14);border:1px solid rgba(220,80,60,.4);color:#f0b4a8;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;margin:2px 6px 2px 0}' +
+        '.xy-act.p{background:rgba(220,38,38,.35);border-color:rgba(220,38,38,.6);color:#fff;font-weight:700}' +
+        '.xy-dead{color:#9a8f8a;text-decoration:line-through}';
       (d.head || d.documentElement).appendChild(st);
     }
-    function 关闭() { try { var p = hD().getElementById(PANEL_ID); if (p) p.remove(); } catch (e) {} }
-    function 渲染() {
-      var d = hD();
-      var p = d.getElementById(PANEL_ID);
-      if (!p) return;
+
+    // ── 内容层（唯一渲染点，三种外壳共用 · 规范 §2.5 ShellAdapter）──
+    function 内容HTML() {
       var D = 读变量(); var s = D.s, v = D.v || {};
       var e2 = function (x) { return esc(x); };
-      var h = '';
-      if (!s || !s._世界) {
-        p.innerHTML = '<div class="cc-hd"><span class="cc-t">血月七夜 · 控制中心</span><span><button class="cc-btn" data-act="close">关闭</button></span></div><div class="cc-muted">变量未就绪——发送第一条消息后打开。</div>';
-        return;
-      }
+      if (!s || !s._世界) return '<div class="xy-muted">变量未就绪——发送第一条消息后打开。</div>';
       var W = s._世界, P = s._玩家;
       var 存活 = String(W.存活名单 || '').split('|').filter(Boolean);
-      h += '<div class="cc-hd"><span class="cc-t">血月七夜 · 控制中心</span><span>';
-      h += '<button class="cc-btn" data-act="refresh">↻</button>';
-      h += '<button class="cc-btn p" data-act="close">关闭</button></span></div>';
-      h += '<div style="margin-bottom:8px"><span class="cc-pill">第 ' + e2(W.天数) + ' ' + e2(W.阶段) + '</span>';
-      h += '<span class="cc-pill">身份：' + e2(P.身份 === '未指派' ? '未指派' : (P.身份 === '狼' ? '狼' : P.身份 === '民' ? '民' : '持物·' + P.身份)) + '</span>';
-      h += '<span class="cc-pill">存活 ' + (存活.length + (P.存活 === '存活' ? 1 : 0)) + '/12</span></div>';
+      var h = '';
+      h += '<div><span class="xy-pill">第 ' + e2(W.天数) + ' ' + e2(W.阶段) + '</span>';
+      h += '<span class="xy-pill">身份：' + e2(P.身份 === '未指派' ? '未指派' : (P.身份 === '狼' ? '狼' : P.身份 === '民' ? '民' : '持物·' + P.身份)) + '</span>';
+      h += '<span class="xy-pill">存活 ' + (存活.length + (P.存活 === '存活' ? 1 : 0)) + '/12</span></div>';
       if (P.身份 === '未指派') {
-        h += '<button class="cc-btn p" data-act="start">☾ 开始 · 迎接血梦</button><div class="cc-muted" style="margin-top:6px">指派身份 → 第一夜降临 → 楼层面板切换到行动界面。</div>';
+        h += '<div style="margin-top:8px"><button class="xy-act p" data-act="start">☾ 开始 · 迎接血梦</button></div>';
+        h += '<div class="xy-muted" style="margin-top:4px">指派身份 → 第一夜降临 → 楼层面板切换到行动界面。</div>';
       }
-      // 血梦/同伴（私密，来自脚本变量）
-      if (v.血梦) h += '<div class="cc-sec">血梦</div><div class="cc-muted">' + e2(v.血梦) + '</div>';
-      if (P.身份 === '狼' && v.同伴) h += '<div class="cc-muted">同伴：' + e2(v.同伴) + '</div>';
-      // 关系网
+      if (v.血梦) h += '<div class="xy-sec">血梦</div><div class="xy-muted">' + e2(v.血梦) + '</div>';
+      if (P.身份 === '狼' && v.同伴) h += '<div class="xy-muted">同伴：' + e2(v.同伴) + '</div>';
       if (s.人物) {
-        h += '<div class="cc-sec">她们与你的关系（♥好感 / 疑怀疑）</div>';
+        h += '<div class="xy-sec">她们与你的关系（♥好感 / 疑怀疑）</div>';
         var ns = Object.keys(s.人物);
         for (var i = 0; i < ns.length; i++) {
-          var n = ns[i], g = s.人物[n].好感 || 0, y = s.人物[n].怀疑 || 0;
-          var dead = 存活.indexOf(n) < 0;
-          h += '<div class="cc-row"><span class="cc-nm' + (dead ? ' cc-dead' : '') + '">' + e2(n) + '</span>';
-          h += '<span class="cc-num" style="color:' + (g >= 60 ? '#10b981' : '#9a8f8a') + '">♥' + g + '</span>';
-          h += '<div class="cc-bar"><div style="width:' + g + '%;background:linear-gradient(90deg,#7f1d1d,#f472b6)"></div></div>';
-          h += '<span class="cc-num" style="color:' + (y >= 40 ? '#f59e0b' : '#9a8f8a') + '">疑' + y + '</span>';
-          h += '<div class="cc-bar"><div style="width:' + y + '%;background:linear-gradient(90deg,#78350f,#f59e0b)"></div></div></div>';
+          var n = ns[i], g = s.人物[n].好感 || 0, y = s.人物[n].怀疑 || 0, dead = 存活.indexOf(n) < 0;
+          h += '<div class="xy-row"><span class="xy-nm' + (dead ? ' xy-dead' : '') + '">' + e2(n) + '</span>';
+          h += '<span class="xy-num" style="color:' + (g >= 60 ? '#10b981' : '#9a8f8a') + '">♥' + g + '</span>';
+          h += '<div class="xy-bar"><div style="width:' + g + '%;background:linear-gradient(90deg,#7f1d1d,#f472b6)"></div></div>';
+          h += '<span class="xy-num" style="color:' + (y >= 40 ? '#f59e0b' : '#9a8f8a') + '">疑' + y + '</span>';
+          h += '<div class="xy-bar"><div style="width:' + y + '%;background:linear-gradient(90deg,#78350f,#f59e0b)"></div></div></div>';
         }
       }
-      // 本局大事记
-      if (W.公开事实) h += '<div class="cc-sec">本局大事记</div><div class="cc-muted">' + e2(W.公开事实) + '</div>';
-      // 玩法速查
-      h += '<div class="cc-sec">玩法速查</div><div class="cc-muted">12 人：4 狼 / 4 民 / 4 持物（铜镜·药囊·银匕·草汁）。夜=入睡并安排行动（狼选猎物、持物人布防、可约同屋）；昼=讨论、质询、投票处决（过半即刑）。狼全灭=好人胜；狼数追平或七夜耗尽=狼胜。物只对持有者显现，使用无声无息——除了你自己，没人知道。</div>';
-      // 高级
-      h += '<div class="cc-sec">高级</div>';
-      if (P.存活 !== '死亡' && !/【终局】/.test(W.公开事实 || '')) h += '<button class="cc-btn" data-act="reset">重开一局</button>';
-      if (P.存活 === '死亡') h += '<div class="cc-muted">你已出局。可在楼层面板重开。</div>';
-      p.innerHTML = h;
+      if (W.公开事实) h += '<div class="xy-sec">本局大事记</div><div class="xy-muted">' + e2(W.公开事实) + '</div>';
+      h += '<div class="xy-sec">玩法速查</div><div class="xy-muted">12 人：4 狼 / 4 民 / 4 持物（铜镜·药囊·银匕·草汁）。夜=入睡并安排行动（狼选猎物、持物人布防、可约同屋）；昼=讨论、质询、投票处决（过半即刑）。狼全灭=好人胜；狼数追平或七夜耗尽=狼胜。物只对持有者显现，使用无声无息——除了你自己，没人知道。</div>';
+      h += '<div class="xy-sec">高级</div>';
+      if (P.存活 !== '死亡' && !/【终局】/.test(W.公开事实 || '')) h += '<button class="xy-act" data-act="reset">重开一局</button>';
+      h += '<button class="xy-act" data-act="to-drawer">抽屉外壳</button><button class="xy-act" data-act="to-float">浮窗外壳</button>';
+      if (P.存活 === '死亡') h += '<div class="xy-muted" style="margin-top:6px">你已出局。可重开或在楼层面板操作。</div>';
+      return h;
     }
-    function 打开() {
+    function 刷新内容() { var b = hD().getElementById(BODY_ID); if (b) b.innerHTML = 内容HTML(); }
+
+    // ── 外壳：构造（三壳共用骨架）──
+    function 骨架(标题) {
+      return '<div class="xy-shell-hd"><b>☾ 血月七夜 · ' + 标题 + '</b><span class="xy-btns">' +
+        '<button data-act="refresh">↻</button>' +
+        '<button data-act="close">关闭</button></span></div>' +
+        '<div class="xy-shell-body" id="' + BODY_ID + '"></div>';
+    }
+    // 外壳内动作委托（唯一监听器）
+    function 绑动作(root) {
+      root.addEventListener('click', function (e) {
+        var t = e.target && e.target.closest ? e.target.closest('[data-act]') : null;
+        if (!t) return;
+        var act = t.getAttribute('data-act');
+        if (act === 'close') { 关全部(); }
+        else if (act === 'refresh') 刷新内容();
+        else if (act === 'start') { t.disabled = true; t.textContent = '血月升起中…'; (async function () { try { var 裁 = await wait裁判(); await 裁.指派(); await 推进('夜深了，我躺下，任由困意把我拖进梦里。'); 刷新内容(); } catch (err) { t.textContent = '启动失败：' + (err && err.message || err); } })(); }
+        else if (act === 'reset') { (async function () { try { if (!hW().confirm('清除所有进度，回到投宿之夜？建议重开后开新聊天。')) return; var 裁 = await wait裁判(); await 裁.重开(); 刷新内容(); } catch (err) {} })(); }
+        else if (act === 'to-drawer') { 关浮窗(); 开抽屉(); }
+        else if (act === 'to-float') { 关抽屉(); 开浮窗(); }
+      });
+    }
+
+    // ── C13 浮窗：drag handle 拖动 + resize handle + 几何持久化 + 视口夹取 ──
+    function 夹取(rect) {
+      var w = Math.min(Math.max(rect.w || 420, 280), vw() - 8);
+      var h = Math.min(Math.max(rect.h || Math.round(vh() * 0.7), 220), vh() - 8);
+      var x = Math.min(Math.max(rect.x != null ? rect.x : vw() - w - 16, 4), vw() - w - 4);
+      var y = Math.min(Math.max(rect.y != null ? rect.y : 64, 4), vh() - h - 4);
+      return { x: x, y: y, w: w, h: h };
+    }
+    function 存几何(r) { try { hW().localStorage.setItem(KEY_RECT, JSON.stringify({ version: V, ...r })); } catch (e) {} }
+    function 读几何() { try { var o = JSON.parse(hW().localStorage.getItem(KEY_RECT) || 'null'); if (o && o.version === V) return o; } catch (e) {} return null; }
+    function 开浮窗() {
       try {
-        var d = hD();
-        if (d.getElementById(PANEL_ID)) { 关闭(); return; }
-        样式();
-        var p = d.createElement('div');
-        p.id = PANEL_ID;
-        // 事件委托（规范：单监听器管理全部交互）
-        p.addEventListener('click', function (e) {
-          var t = e.target && e.target.closest ? e.target.closest('[data-act]') : null;
-          if (!t) return;
-          var act = t.getAttribute('data-act');
-          if (act === 'close') 关闭();
-          else if (act === 'refresh') 渲染();
-          else if (act === 'start') { t.disabled = true; t.textContent = '血月升起中…'; (async function () { try { var 裁 = await wait裁判(); await 裁.指派(); await 推进('夜深了，我躺下，任由困意把我拖进梦里。'); } catch (err) { t.textContent = '启动失败：' + (err && err.message || err); } })(); }
-          else if (act === 'reset') { (async function () { try { if (!window.confirm('清除所有进度，回到投宿之夜？建议重开后开新聊天。')) return; var 裁 = await wait裁判(); await 裁.重开(); 渲染(); } catch (err) {} })(); }
+        var d = hD(); 样式();
+        if (d.getElementById(FLOAT_ID)) { 关全部(); return; }
+        关抽屉();
+        var f = d.createElement('div'); f.id = FLOAT_ID;
+        f.innerHTML = 骨架('控制中心') + '<div class="xy-resize" data-role="rz"></div>';
+        d.body.appendChild(f);
+        var g = 夹取(读几何() || {});
+        f.style.left = g.x + 'px'; f.style.top = g.y + 'px'; f.style.width = g.w + 'px'; f.style.height = g.h + 'px';
+        f.classList.add('on');
+        绑动作(f);
+        // 拖动：只从 hd 开始（规范：明确 drag handle）
+        var hd = f.querySelector('.xy-shell-hd'), rz = f.querySelector('[data-role="rz"]');
+        hd.addEventListener('pointerdown', function (e) {
+          if (e.target.closest('button')) return; // 按钮不触发拖动
+          e.preventDefault(); try { hd.setPointerCapture(e.pointerId); } catch (x) {}
+          拖动 = { 模: 'move', sx: e.clientX, sy: e.clientY, ox: f.offsetLeft, oy: f.offsetTop };
+          f.dataset.shellState = 'dragging';
         });
-        d.body.appendChild(p);
-        渲染();
-      } catch (e) {}
-    }
-    function 魔杖() {
-      try {
-        var d = hD();
-        var host = d.querySelector('#extensionsMenu') || d.querySelector('.extensionsMenu') || d.body;
-        var wrap = d.getElementById(WAND_ID);
-        if (!wrap) {
-          wrap = d.createElement('span'); wrap.id = WAND_ID;
-          var b = d.createElement('button');
-          b.textContent = '血月七夜'; b.title = '控制中心 · 总览与高级操作';
-          b.className = 'menu_button menu_button_icon';
-          b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); 打开(); });
-          wrap.appendChild(b);
+        rz.addEventListener('pointerdown', function (e) {
+          e.preventDefault(); e.stopPropagation(); try { rz.setPointerCapture(e.pointerId); } catch (x) {}
+          拖动 = { 模: 'size', sx: e.clientX, sy: e.clientY, ow: f.offsetWidth, oh: f.offsetHeight };
+          f.dataset.shellState = 'resizing';
+        });
+        function 移动(e) {
+          if (!拖动) return;
+          if (拖动.模 === 'move') {
+            var g2 = 夹取({ x: 拖动.ox + (e.clientX - 拖动.sx), y: 拖动.oy + (e.clientY - 拖动.sy), w: f.offsetWidth, h: f.offsetHeight });
+            f.style.left = g2.x + 'px'; f.style.top = g2.y + 'px';
+          } else {
+            var g3 = 夹取({ x: f.offsetLeft, y: f.offsetTop, w: 拖动.ow + (e.clientX - 拖动.sx), h: 拖动.oh + (e.clientY - 拖动.sy) });
+            f.style.width = g3.w + 'px'; f.style.height = g3.h + 'px';
+          }
         }
-        if (wrap.parentNode !== host) host.appendChild(wrap);
+        function 结束() {
+          if (!拖动) return; 拖动 = null; try { delete f.dataset.shellState; } catch (x) {}
+          存几何({ x: f.offsetLeft, y: f.offsetTop, w: f.offsetWidth, h: f.offsetHeight });
+        }
+        [hd, rz].forEach(function (el) {
+          el.addEventListener('pointermove', 移动);
+          el.addEventListener('pointerup', 结束);
+          el.addEventListener('pointercancel', 结束);
+        });
+        刷新内容();
       } catch (e) {}
     }
+    function 关浮窗() { try { var f = hD().getElementById(FLOAT_ID); if (f) f.remove(); } catch (e) {} }
+
+    // ── C12 抽屉：右缘滑出 + 遮罩 + 单轴阈值手势 ──
+    function 开抽屉() {
+      try {
+        var d = hD(); 样式();
+        if (d.getElementById(DRAWER_ID)) { 关全部(); return; }
+        关浮窗();
+        var mask = d.createElement('div'); mask.id = 'xy-drawer-mask';
+        var dr = d.createElement('div'); dr.id = DRAWER_ID;
+        dr.innerHTML = 骨架('抽屉外壳');
+        d.body.appendChild(mask); d.body.appendChild(dr);
+        请求动画帧(function () { mask.classList.add('on'); dr.classList.add('on'); });
+        mask.addEventListener('click', 关全部);
+        绑动作(dr);
+        // 手势：单轴位移超阈值才判滑动（规范 C12 §6）
+        var 手势 = null;
+        dr.addEventListener('pointerdown', function (e) {
+          if (e.target.closest('button,.xy-shell-body')) return;
+          手势 = { x: e.clientX, y: e.clientY, t: Date.now() };
+        });
+        dr.addEventListener('pointerup', function (e) {
+          if (!手势) return;
+          var dx = e.clientX - 手势.x, dy = e.clientY - 手势.y;
+          if (Math.abs(dx) > 46 && Math.abs(dx) > Math.abs(dy) * 1.4 && dx > 0) 关全部(); // 右滑关
+          手势 = null;
+        });
+        刷新内容();
+      } catch (e) {}
+    }
+    function 关抽屉() {
+      try {
+        var d = hD(); var dr = d.getElementById(DRAWER_ID), mk = d.getElementById('xy-drawer-mask');
+        if (dr) { dr.classList.remove('on'); setTimeout(function () { try { dr.remove(); } catch (e) {} }, 230); }
+        if (mk) { mk.classList.remove('on'); setTimeout(function () { try { mk.remove(); } catch (e) {} }, 230); }
+      } catch (e) {}
+    }
+    function 关全部() { 关浮窗(); 关抽屉(); 关轮盘(); }
+    function 请求动画帧(fn) { try { (hW().requestAnimationFrame || function (cb) { setTimeout(cb, 16); })(fn); } catch (e) { fn(); } }
+
+    // ── C11 悬浮球：统一 pointer 手势 + 吸边 + 持久化 + 轮盘（视口夹取）──
+    function 读球位() { try { var o = JSON.parse(hW().localStorage.getItem(KEY_ORB) || 'null'); if (o && o.version === V) return o; } catch (e) {} return { side: 'left', y: Math.round(vh() * 0.62) }; }
+    function 存球位(p) { try { hW().localStorage.setItem(KEY_ORB, JSON.stringify({ version: V, ...p })); } catch (e) {} }
+    function 放球(球, p) {
+      var x = p.side === 'right' ? vw() - 52 - 12 : 12;
+      var y = Math.min(Math.max(p.y, 12), vh() - 52 - 12);
+      球.style.left = x + 'px'; 球.style.top = y + 'px';
+      return { side: p.side, y: y };
+    }
+    function 关轮盘() { try { var m = hD().getElementById(MENU_ID); if (m) m.classList.remove('on'); } catch (e) {} }
+    function 开轮盘(球) {
+      try {
+        var d = hD(); var m = d.getElementById(MENU_ID);
+        if (!m) {
+          m = d.createElement('div'); m.id = MENU_ID;
+          m.innerHTML = ['<button data-cmd="float">控制中心 · 浮窗</button>', '<button data-cmd="drawer">控制中心 · 抽屉</button>', '<button data-cmd="close">关闭全部</button>'].join('');
+          m.addEventListener('click', function (e) {
+            var t = e.target.closest('[data-cmd]'); if (!t) return;
+            var c = t.getAttribute('data-cmd'); 关轮盘();
+            if (c === 'float') 开浮窗(); else if (c === 'drawer') 开抽屉(); else 关全部();
+          });
+          d.body.appendChild(m);
+        }
+        var r = 球.getBoundingClientRect();
+        var mw = 150, mh = 130;
+        var x = Math.min(Math.max(r.right - mw, 8), vw() - mw - 8); // 视口夹取（规范 §6）
+        var y = Math.min(Math.max(r.top - mh - 8, 8), vh() - mh - 8);
+        m.style.left = x + 'px'; m.style.top = y + 'px';
+        m.classList.add('on');
+      } catch (e) {}
+    }
+    function 挂悬浮球() {
+      try {
+        var d = hD(); 样式();
+        var 旧球 = d.getElementById(ORB_ID); if (旧球) 旧球.remove(); // 总是重建（绑定当前逻辑）
+        var 球 = d.createElement('div'); 球.id = ORB_ID; 球.title = '血月七夜 · 控制中心';
+        球.innerHTML = '☾';
+        d.body.appendChild(球);
+        var 位 = 放球(球, 读球位());
+        var g = null; // 手势状态机：down→可能drag→up（拖动后不触发点击 · 规范 §10）
+        var 移过 = false;
+        球.addEventListener('pointerdown', function (e) {
+          e.preventDefault(); try { 球.setPointerCapture(e.pointerId); } catch (x) {}
+          g = { sx: e.clientX, sy: e.clientY, ox: 球.offsetLeft, oy: 球.offsetTop }; 移过 = false;
+        });
+        球.addEventListener('pointermove', function (e) {
+          if (!g) return;
+          var dx = e.clientX - g.sx, dy = e.clientY - g.sy;
+          if (Math.abs(dx) + Math.abs(dy) > 6) 移过 = true;
+          if (移过) {
+            球.style.left = Math.min(Math.max(g.ox + dx, 4), vw() - 52 - 4) + 'px';
+            球.style.top = Math.min(Math.max(g.oy + dy, 4), vh() - 52 - 4) + 'px';
+          }
+        });
+        球.addEventListener('pointerup', function (e) {
+          if (!g) return;
+          if (移过) {
+            // 吸边（规范：距左右边缘小于阈值时吸附）
+            var cx = 球.offsetLeft + 26;
+            var side = cx < vw() / 2 ? 'left' : 'right';
+            位 = 放球(球, { side: side, y: 球.offsetTop }); 存球位(位);
+          } else {
+            var m = hD().getElementById(MENU_ID);
+            if (m && m.classList.contains('on')) 关轮盘(); else 开轮盘(球);
+          }
+          g = null;
+        });
+        球.addEventListener('pointercancel', function () { g = null; });
+      } catch (e) {}
+    }
+
+    // ── 命令注册表（规范 §1.1：入口只 dispatch 命令，不复制业务）──
+    var 命令 = { float: 开浮窗, drawer: 开抽屉, hud: function () {}, close: 关全部 };
+
     function init() {
-      try { if (window.__xyCC && window.__xyCC.destroy) window.__xyCC.destroy(); } catch (e) {} // 防重入
-      魔杖(); setTimeout(魔杖, 1000);
+      try { if (window.__xyEntry && window.__xyEntry.destroy) window.__xyEntry.destroy(); } catch (e) {} // 防重入
+      挂悬浮球(); setTimeout(挂悬浮球, 800);
       try {
         var on = window.eventOn || hW().eventOn;
         var ev = window.tavern_events || hW().tavern_events || {};
         if (typeof on === 'function') {
           ['CHAT_CHANGED', 'CHARACTER_MESSAGE_RENDERED'].forEach(function (k) {
             if (!ev[k]) return;
-            try { var dd = on(ev[k], function () { setTimeout(魔杖, 250); }); if (dd && dd.stop) disposers.push(function () { dd.stop(); }); } catch (e) {}
+            try { var dd = on(ev[k], function () { setTimeout(挂悬浮球, 250); }); if (dd && dd.stop) disposers.push(function () { dd.stop(); }); } catch (e) {}
           });
-          // 变量更新时若面板开着 → 自动刷新
           var Mvu = pickHostValue('Mvu');
           if (Mvu && Mvu.events && Mvu.events.VARIABLE_UPDATE_ENDED) {
-            try { on(Mvu.events.VARIABLE_UPDATE_ENDED, function () { setTimeout(渲染, 600); }); } catch (e) {}
+            try { on(Mvu.events.VARIABLE_UPDATE_ENDED, function () { setTimeout(刷新内容, 600); }); } catch (e) {}
           }
         }
       } catch (e) {}
-      return { open: 打开, close: 关闭, destroy: function () { while (disposers.length) { try { disposers.pop()(); } catch (e) {} } 关闭(); } };
+      return { open: 开浮窗, openDrawer: 开抽屉, command: function (k) { try { (命令[k] || function () {})(); } catch (e) {} }, destroy: function () { while (disposers.length) { try { disposers.pop()(); } catch (e) {} } 关全部(); try { var b = hD().getElementById(ORB_ID); if (b) b.remove(); } catch (e) {} } };
     }
     return init();
   })();
-  try { window.__xyCC = 控制中心; } catch (e) {}
+  try { window.__xyEntry = 入口层; } catch (e) {}
+
   启动();
   window.__xyCCRerender = function () { try { render(); } catch (e) {} };
   // 状态变化自动刷新（防抖）——操作后/新楼层生成后面板自动更新，无需手动 ↻
